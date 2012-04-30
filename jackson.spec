@@ -1,6 +1,6 @@
 Name: jackson
 Version: 1.9.4
-Release: 2%{?dist}
+Release: 3%{?dist}
 Summary: Jackson Java JSON-processor
 
 Group: Development/Libraries
@@ -28,7 +28,6 @@ Requires: objectweb-asm >= 3.3
 BuildRequires: jpackage-utils
 BuildRequires: java-devel
 BuildRequires: ant >= 1.8.2
-BuildRequires: maven-ant-tasks >= 2.1.1
 BuildRequires: joda-time >= 1.6.2
 BuildRequires: stax2-api >= 3.1.1
 BuildRequires: jsr-311 >= 1.1.1
@@ -125,6 +124,9 @@ cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 
 
 %changelog
+* Mon Apr 30 2012 Juan Hernandez <juan.hernandez@redhat.com> 1.9.4-3
+- Remove the build dependency on maven ant tasks
+
 * Wed Feb 15 2012 Juan Hernandez <juan.hernandez@redhat.com> 1.9.4-2
 - Updated license to ASL 2.0 or LGPLv2
 - Removed macros from the source URL
