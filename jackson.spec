@@ -1,6 +1,6 @@
 Name: jackson
 Version: 1.9.4
-Release: 3%{?dist}
+Release: 4%{?dist}
 Summary: Jackson Java JSON-processor
 
 Group: Development/Libraries
@@ -124,6 +124,9 @@ cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 
 
 %changelog
+* Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.9.4-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
+
 * Mon Apr 30 2012 Juan Hernandez <juan.hernandez@redhat.com> 1.9.4-3
 - Remove the build dependency on maven ant tasks
 
