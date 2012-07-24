@@ -1,6 +1,6 @@
 Name: jackson
 Version: 1.9.4
-Release: 4%{?dist}
+Release: 5%{?dist}
 Summary: Jackson Java JSON-processor
 
 Group: Development/Libraries
@@ -15,6 +15,9 @@ Patch0: %{name}-build-plain-jars-instead-of-osgi-bundles.patch
 
 # Don't require a repackaged version of ASM:
 Patch1: %{name}-dont-require-repackaged-asm.patch
+
+# Don't bundle the ASM classes:
+Patch2: %{name}-dont-bundle-asm.patch
 
 BuildArch: noarch
 
@@ -56,6 +59,7 @@ This package contains javadoc for %{name}.
 %setup -q -n %{name}-src-%{version}
 %patch0 -p1
 %patch1 -p1
+%patch2 -p1
 
 # Remove all the binary jar files, as the packaging policies
 # forbids using them:
@@ -124,6 +128,9 @@ cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 
 
 %changelog
+* Tue Jul 24 2012 Juan Hernandez <juan.hernandez@redhat.com> - 1.9.4-5
+- Don't bundle ASM classes (#842603)
+
 * Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.9.4-4
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
 
