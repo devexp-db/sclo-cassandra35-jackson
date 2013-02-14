@@ -1,6 +1,6 @@
 Name: jackson
 Version: 1.9.4
-Release: 5%{?dist}
+Release: 6%{?dist}
 Summary: Jackson Java JSON-processor
 
 Group: Development/Libraries
@@ -128,6 +128,9 @@ cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 
 
 %changelog
+* Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.9.4-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
+
 * Tue Jul 24 2012 Juan Hernandez <juan.hernandez@redhat.com> - 1.9.4-5
 - Don't bundle ASM classes (#842603)
 
