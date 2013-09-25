@@ -1,0 +1,415 @@
+diff -Nru jackson-src-1.9.11/src/java/org/codehaus/jackson/impl/Utf8StreamParser.java jackson-src-1.9.11-gil/src/java/org/codehaus/jackson/impl/Utf8StreamParser.java
+--- jackson-src-1.9.11/src/java/org/codehaus/jackson/impl/Utf8StreamParser.java	2012-11-06 17:24:50.000000000 +0100
++++ jackson-src-1.9.11-gil/src/java/org/codehaus/jackson/impl/Utf8StreamParser.java	2013-02-13 18:45:26.000000000 +0100
+@@ -730,7 +730,7 @@
+     {
+         // very first thing: common case, colon, value, no white space
+         int i;
+-        if (_inputPtr < _inputEnd && _inputBuffer[_inputPtr] == INT_COLON) { // fast case first
++        if (_inputPtr < (_inputEnd-1) && _inputBuffer[_inputPtr] == INT_COLON) { // fast case first
+             ++_inputPtr;
+             i = _inputBuffer[_inputPtr++];
+             if (i == INT_QUOTE) {
+@@ -2359,6 +2359,7 @@
+                 switch (i) {
+                 case INT_SPACE:
+                 case INT_TAB:
++                    break;
+                 case INT_CR:
+                     _skipCR();
+                     break;
+@@ -2374,11 +2375,11 @@
+                     }
+                     break space_loop;
+                 }
++                if (_inputPtr >= _inputEnd) {
++                    loadMoreGuaranteed();
++                }
++                i = _inputBuffer[_inputPtr++] & 0xFF;
+             }
+-            if (_inputPtr >= _inputEnd) {
+-                loadMoreGuaranteed();
+-            }
+-            i = _inputBuffer[_inputPtr++] & 0xFF;
+             if (i != INT_COLON) {
+                 _reportUnexpectedChar(i, "was expecting a colon to separate field name and value");
+             }
+diff -Nru jackson-src-1.9.11/src/java/org/codehaus/jackson/io/JsonStringEncoder.java jackson-src-1.9.11-gil/src/java/org/codehaus/jackson/io/JsonStringEncoder.java
+--- jackson-src-1.9.11/src/java/org/codehaus/jackson/io/JsonStringEncoder.java	2012-11-06 17:24:51.000000000 +0100
++++ jackson-src-1.9.11-gil/src/java/org/codehaus/jackson/io/JsonStringEncoder.java	2013-01-15 21:03:48.000000000 +0100
+@@ -129,8 +129,12 @@
+                 }
+             }
+             // something to escape; 2 or 6-char variant? 
+-            int escCode = escCodes[input.charAt(inPtr++)];
+-            int length = _appendSingleEscape(escCode, _quoteBuffer);
++            char d = input.charAt(inPtr++);
++            int escCode = escCodes[d];
++            int length = (escCode < 0)
++                    ? _appendNumericEscape(d, _quoteBuffer)
++                    : _appendNamedEscape(escCode, _quoteBuffer);
++                    ;
+             if ((outPtr + length) > outputBuffer.length) {
+                 int first = outputBuffer.length - outPtr;
+                 if (first > 0) {
+@@ -144,7 +148,6 @@
+                 System.arraycopy(_quoteBuffer, 0, outputBuffer, outPtr, length);
+                 outPtr += length;
+             }
+-            
+         }
+         textBuffer.setCurrentLength(outPtr);
+         return textBuffer.contentsAsArray();
+@@ -249,6 +252,7 @@
+      * Will encode given String as UTF-8 (without any quoting), return
+      * resulting byte array.
+      */
++    @SuppressWarnings("resource")
+     public byte[] encodeAsUTF8(String text)
+     {
+         ByteArrayBuilder byteBuilder = _byteBuilder;
+@@ -341,16 +345,17 @@
+     /**********************************************************
+      */
+ 
+-    private int _appendSingleEscape(int escCode, char[] quoteBuffer)
++    private int _appendNumericEscape(int value, char[] quoteBuffer)
++    {
++        quoteBuffer[1] = 'u';
++        // We know it's a control char, so only the last 2 chars are non-0
++        quoteBuffer[4] = HEX_CHARS[value >> 4];
++        quoteBuffer[5] = HEX_CHARS[value & 0xF];
++        return 6;
++    }
++
++    private int _appendNamedEscape(int escCode, char[] quoteBuffer)
+     {
+-        if (escCode < 0) { // control char, value -(char + 1)
+-            int value = -(escCode + 1);
+-            quoteBuffer[1] = 'u';
+-            // We know it's a control char, so only the last 2 chars are non-0
+-            quoteBuffer[4] = HEX_CHARS[value >> 4];
+-            quoteBuffer[5] = HEX_CHARS[value & 0xF];
+-            return 6;
+-        }
+         quoteBuffer[1] = (char) escCode;
+         return 2;
+     }
+diff -Nru jackson-src-1.9.11/src/java/org/codehaus/jackson/io/UTF32Reader.java jackson-src-1.9.11-gil/src/java/org/codehaus/jackson/io/UTF32Reader.java
+--- jackson-src-1.9.11/src/java/org/codehaus/jackson/io/UTF32Reader.java	2012-11-06 17:24:51.000000000 +0100
++++ jackson-src-1.9.11-gil/src/java/org/codehaus/jackson/io/UTF32Reader.java	2012-11-15 18:51:10.000000000 +0100
+@@ -2,52 +2,54 @@
+ 
+ import java.io.*;
+ 
+-
+ /**
+  * Since JDK does not come with UTF-32/UCS-4, let's implement a simple
+  * decoder to use.
+  */
+-public final class UTF32Reader
++public class UTF32Reader
+     extends BaseReader
+ {
+-    final boolean mBigEndian;
++    protected final boolean _bigEndian;
+ 
+     /**
+      * Although input is fine with full Unicode set, Java still uses
+      * 16-bit chars, so we may have to split high-order chars into
+      * surrogate pairs.
+      */
+-    char mSurrogate = NULL_CHAR;
++    protected char _surrogate = NULL_CHAR;
+ 
+     /**
+      * Total read character count; used for error reporting purposes
+      */
+-    int mCharCount = 0;
++    protected int _charCount = 0;
+ 
+     /**
+      * Total read byte count; used for error reporting purposes
+      */
+-    int mByteCount = 0;
++    protected int _byteCount = 0;
+ 
++    protected final boolean _managedBuffers;
++    
+     /*
+-    ////////////////////////////////////////
+-    // Life-cycle
+-    ////////////////////////////////////////
+-    */
++    /**********************************************************
++    /* Life-cycle
++    /**********************************************************
++     */
+ 
+     public UTF32Reader(IOContext ctxt,
+-                       InputStream in, byte[] buf, int ptr, int len,
+-                       boolean isBigEndian)
++            InputStream in, byte[] buf, int ptr, int len,
++            boolean isBigEndian)
+     {
+         super(ctxt, in, buf, ptr, len);
+-        mBigEndian = isBigEndian;
++        _bigEndian = isBigEndian;
++        _managedBuffers = (in != null);
+     }
+ 
+     /*
+-    ////////////////////////////////////////
+-    // Public API
+-    ////////////////////////////////////////
+-    */
++    /**********************************************************
++    /* Public API
++    /**********************************************************
++     */
+ 
+     @Override
+ 	public int read(char[] cbuf, int start, int len)
+@@ -69,9 +71,9 @@
+         int outPtr = start;
+ 
+         // Ok, first; do we have a surrogate from last round?
+-        if (mSurrogate != NULL_CHAR) {
+-            cbuf[outPtr++] = mSurrogate;
+-            mSurrogate = NULL_CHAR;
++        if (_surrogate != NULL_CHAR) {
++            cbuf[outPtr++] = _surrogate;
++            _surrogate = NULL_CHAR;
+             // No need to load more, already got one char
+         } else {
+             /* Note: we'll try to avoid blocking as much as possible. As a
+@@ -90,7 +92,7 @@
+             int ptr = _ptr;
+             int ch;
+ 
+-            if (mBigEndian) {
++            if (_bigEndian) {
+                 ch = (_buffer[ptr] << 24) | ((_buffer[ptr+1] & 0xFF) << 16)
+                     | ((_buffer[ptr+2] & 0xFF) << 8) | (_buffer[ptr+3] & 0xFF);
+             } else {
+@@ -112,7 +114,7 @@
+                 ch = (0xDC00 | (ch & 0x03FF));
+                 // Room for second part?
+                 if (outPtr >= len) { // nope
+-                    mSurrogate = (char) ch;
++                    _surrogate = (char) ch;
+                     break main_loop;
+                 }
+             }
+@@ -123,36 +125,34 @@
+         }
+ 
+         len = outPtr - start;
+-        mCharCount += len;
++        _charCount += len;
+         return len;
+     }
+ 
+     /*
+-    ////////////////////////////////////////
+-    // Internal methods
+-    ////////////////////////////////////////
+-    */
++    /**********************************************************
++    /* Internal methods
++    /**********************************************************
++     */
+ 
+     private void reportUnexpectedEOF(int gotBytes, int needed)
+         throws IOException
+     {
+-        int bytePos = mByteCount + gotBytes;
+-        int charPos = mCharCount;
++        int bytePos = _byteCount + gotBytes;
++        int charPos = _charCount;
+ 
+         throw new CharConversionException("Unexpected EOF in the middle of a 4-byte UTF-32 char: got "
+-                                          +gotBytes+", needed "+needed
+-                                          +", at char #"+charPos+", byte #"+bytePos+")");
++                +gotBytes+", needed "+needed+", at char #"+charPos+", byte #"+bytePos+")");
+     }
+ 
+     private void reportInvalid(int value, int offset, String msg)
+         throws IOException
+     {
+-        int bytePos = mByteCount + _ptr - 1;
+-        int charPos = mCharCount + offset;
++        int bytePos = _byteCount + _ptr - 1;
++        int charPos = _charCount + offset;
+ 
+         throw new CharConversionException("Invalid UTF-32 character 0x"
+-                                          +Integer.toHexString(value)
+-                                          +msg+" at char #"+charPos+", byte #"+bytePos+")");
++                +Integer.toHexString(value)+msg+" at char #"+charPos+", byte #"+bytePos+")");
+     }
+ 
+     /**
+@@ -164,7 +164,7 @@
+     private boolean loadMore(int available)
+         throws IOException
+     {
+-        mByteCount += (_length - available);
++        _byteCount += (_length - available);
+ 
+         // Bytes that need to be moved to the beginning of buffer?
+         if (available > 0) {
+@@ -180,11 +180,13 @@
+              * so let's do a separate read right away:
+              */
+             _ptr = 0;
+-            int count = _in.read(_buffer);
++            int count = (_in == null) ? -1 : _in.read(_buffer);
+             if (count < 1) {
+                 _length = 0;
+                 if (count < 0) { // -1
+-                    freeBuffers(); // to help GC?
++                    if (_managedBuffers) {
++                        freeBuffers(); // to help GC?
++                    }
+                     return false;
+                 }
+                 // 0 count is no good; let's err out
+@@ -197,10 +199,12 @@
+          * error.
+          */
+         while (_length < 4) {
+-            int count = _in.read(_buffer, _length, _buffer.length - _length);
++            int count = (_in == null) ? -1 : _in.read(_buffer, _length, _buffer.length - _length);
+             if (count < 1) {
+                 if (count < 0) { // -1, EOF... no good!
+-                    freeBuffers(); // to help GC?
++                    if (_managedBuffers) {
++                        freeBuffers(); // to help GC?
++                    }
+                     reportUnexpectedEOF(_length, 4);
+                 }
+                 // 0 count is no good; let's err out
+@@ -211,4 +215,3 @@
+         return true;
+     }
+ }
+-
+diff -Nru jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/AnnotationIntrospector.java jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/AnnotationIntrospector.java
+--- jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/AnnotationIntrospector.java	2012-11-06 17:24:51.000000000 +0100
++++ jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/AnnotationIntrospector.java	2012-11-08 13:26:56.000000000 +0100
+@@ -637,10 +637,15 @@
+      * Method for determining the String value to use for serializing
+      * given enumeration entry; used when serializing enumerations
+      * as Strings (the standard method).
++     *<p>
++     * NOTE: implemented since 1.9.11, to make things work even when
++     * annotation introspection is disabled.
+      *
+      * @return Serialized enum value.
+      */
+-    public abstract String findEnumValue(Enum<?> value);
++    public String findEnumValue(Enum<?> value) {
++        return value.name();
++    }
+ 
+     /*
+     /**********************************************************
+diff -Nru jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/deser/std/ClassDeserializer.java jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/deser/std/ClassDeserializer.java
+--- jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/deser/std/ClassDeserializer.java	2012-11-06 17:24:51.000000000 +0100
++++ jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/deser/std/ClassDeserializer.java	2012-11-16 19:30:42.000000000 +0100
+@@ -7,6 +7,7 @@
+ import org.codehaus.jackson.JsonToken;
+ import org.codehaus.jackson.map.DeserializationContext;
+ import org.codehaus.jackson.map.annotate.JacksonStdImpl;
++import org.codehaus.jackson.map.util.ClassUtil;
+ 
+ /**
+  * 
+@@ -26,20 +27,8 @@
+         // Currently will only accept if given simple class name
+         if (curr == JsonToken.VALUE_STRING) {
+             String className = jp.getText();
+-            // [JACKSON-597]: support primitive types (and void)
+-            if (className.indexOf('.') < 0) {
+-                if ("int".equals(className)) return Integer.TYPE;
+-                if ("long".equals(className)) return Long.TYPE;
+-                if ("float".equals(className)) return Float.TYPE;
+-                if ("double".equals(className)) return Double.TYPE;
+-                if ("boolean".equals(className)) return Boolean.TYPE;
+-                if ("byte".equals(className)) return Byte.TYPE;
+-                if ("char".equals(className)) return Character.TYPE;
+-                if ("short".equals(className)) return Short.TYPE;
+-                if ("void".equals(className)) return Void.TYPE;
+-            }
+             try {
+-                return Class.forName(jp.getText());
++                return ClassUtil.findClass(className);
+             } catch (ClassNotFoundException e) {
+                 throw ctxt.instantiationException(_valueClass, e);
+             }
+diff -Nru jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/deser/StdDeserializerProvider.java jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/deser/StdDeserializerProvider.java
+--- jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/deser/StdDeserializerProvider.java	2012-11-06 17:24:51.000000000 +0100
++++ jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/deser/StdDeserializerProvider.java	2013-03-01 19:29:20.000000000 +0100
+@@ -469,6 +469,16 @@
+             // should never happen? (if it can, could call on that object)
+             throw new IllegalStateException("Type-wrapped deserializer's deserializeWithType should never get called");
+         }
+-    }
+ 
++        @Override
++        public Object deserialize(JsonParser jp, DeserializationContext ctxt,
++                Object intoValue)
++            throws IOException, JsonProcessingException
++        {
++            /* 01-Mar-2013, tatu: Hmmh. Tough call as to what to do... need
++             *   to delegate, but will this work reliably? Let's just hope so:
++             */
++            return _deserializer.deserialize(jp,  ctxt, intoValue);
++        }
++    }
+ }
+diff -Nru jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/introspect/NopAnnotationIntrospector.java jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/introspect/NopAnnotationIntrospector.java
+--- jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/introspect/NopAnnotationIntrospector.java	2012-11-06 17:24:51.000000000 +0100
++++ jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/introspect/NopAnnotationIntrospector.java	2012-11-08 13:31:02.000000000 +0100
+@@ -42,7 +42,8 @@
+ 
+     @Override
+     public String findEnumValue(Enum<?> value) {
+-        return null;
++        // as per [JACKSON-875]
++        return value.name();
+     }
+     
+     /*
+diff -Nru jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/JsonDeserializer.java jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/JsonDeserializer.java
+--- jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/JsonDeserializer.java	2012-11-06 17:24:51.000000000 +0100
++++ jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/JsonDeserializer.java	2013-03-01 19:28:18.000000000 +0100
+@@ -61,7 +61,8 @@
+                          T intoValue)
+         throws IOException, JsonProcessingException
+     {
+-        throw new UnsupportedOperationException();
++        throw new UnsupportedOperationException("Can not update object of type "
++                +intoValue.getClass().getName()+" (by deserializer of type "+getClass().getName()+")");
+     }
+ 
+     /**
+diff -Nru jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/type/TypeBindings.java jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/type/TypeBindings.java
+--- jackson-src-1.9.11/src/mapper/java/org/codehaus/jackson/map/type/TypeBindings.java	2012-11-06 17:24:51.000000000 +0100
++++ jackson-src-1.9.11-gil/src/mapper/java/org/codehaus/jackson/map/type/TypeBindings.java	2013-02-08 22:11:42.000000000 +0100
+@@ -287,7 +287,14 @@
+              * need to call getEnclosingClass since anonymous classes declare 
+              * generics
+              */
+-            _resolveBindings(raw.getDeclaringClass());
++            Class<?> decl = raw.getDeclaringClass();
++            /* 08-Feb-2013, tatu: Except that if context is also super-class, we must
++             *   skip it; context will be checked anyway, and we'd get StackOverflow if
++             *   we went there.
++             */
++            if (decl != null && !decl.isAssignableFrom(raw)) {
++                _resolveBindings(raw.getDeclaringClass());
++            }
+             /* 24-Mar-2010, tatu: Can not have true generics definitions, but can
+              *   have lower bounds ("<T extends BeanBase>") in declaration itself
+              */
