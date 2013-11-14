@@ -1,6 +1,6 @@
 Name:    jackson
 Version: 1.9.11
-Release: 1%{?dist}
+Release: 2%{?dist}
 Summary: Jackson Java JSON-processor
 License: ASL 2.0 or LGPLv2
 URL:     http://jackson.codehaus.org
@@ -24,7 +24,7 @@ Requires: jpackage-utils
 Requires: joda-time >= 1.6.2
 Requires: stax2-api >= 3.1.1
 Requires: jsr-311 >= 1.1.1
-Requires: objectweb-asm >= 3.3
+Requires: objectweb-asm3 >= 3.3
 
 BuildRequires: jpackage-utils
 BuildRequires: java-devel
@@ -32,7 +32,7 @@ BuildRequires: ant >= 1.8.2
 BuildRequires: joda-time >= 1.6.2
 BuildRequires: stax2-api >= 3.1.1
 BuildRequires: jsr-311 >= 1.1.1
-BuildRequires: objectweb-asm >= 3.3
+BuildRequires: objectweb-asm3 >= 3.3
 BuildRequires: cglib >= 2.2
 BuildRequires: groovy >= 1.8.5
 
@@ -69,8 +69,8 @@ rm src/test/org/codehaus/jackson/map/interop/TestGoogleCollections.java
 ln -s $(build-classpath joda-time) lib/ext/joda-time.jar
 ln -s $(build-classpath stax2-api) lib/xml/sta2-api.jar
 ln -s $(build-classpath jsr-311) lib/jaxrs/jsr-311.jar
-ln -s $(build-classpath objectweb-asm/asm) lib/ext/asm/asm.jar
-ln -s $(build-classpath objectweb-asm/asm) lib/repackaged/jackson-asm.jar
+ln -s $(build-classpath objectweb-asm3/asm) lib/ext/asm/asm.jar
+ln -s $(build-classpath objectweb-asm3/asm) lib/repackaged/jackson-asm.jar
 ln -s $(build-classpath cglib) lib/ext/cglib/cglib-nodep.jar
 ln -s $(build-classpath groovy) lib/ext/groovy/groovy.jar
 ln -s $(build-classpath junit) lib/junit/junit.jar
@@ -124,6 +124,9 @@ cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 %doc release-notes
 
 %changelog
+* Thu Nov 14 2013 gil cattaneo <puntogil@libero.it> 1.9.11-2
+- use objectweb-asm3
+
 * Wed Sep 25 2013 gil cattaneo <puntogil@libero.it> 1.9.11-1
 - Update to upstream version 1.9.11
 
