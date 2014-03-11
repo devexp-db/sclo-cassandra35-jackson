@@ -1,6 +1,6 @@
 Name:    jackson
 Version: 1.9.11
-Release: 2%{?dist}
+Release: 3%{?dist}
 Summary: Jackson Java JSON-processor
 License: ASL 2.0 or LGPLv2
 URL:     http://jackson.codehaus.org
@@ -19,7 +19,7 @@ Patch4:  %{name}-1.9.11-javadoc.patch
 
 BuildArch: noarch
 
-Requires: java
+Requires: java-headless
 Requires: jpackage-utils
 Requires: joda-time >= 1.6.2
 Requires: stax2-api >= 3.1.1
@@ -124,6 +124,9 @@ cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 %doc release-notes
 
 %changelog
+* Thu Nov 14 2013 gil cattaneo <puntogil@libero.it> 1.9.11-3
+- switch to java-headless (build)requires (rhbz#1068160)
+
 * Thu Nov 14 2013 gil cattaneo <puntogil@libero.it> 1.9.11-2
 - use objectweb-asm3
 
