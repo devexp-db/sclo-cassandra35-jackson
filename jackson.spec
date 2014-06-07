@@ -1,6 +1,6 @@
 Name:    jackson
 Version: 1.9.11
-Release: 3%{?dist}
+Release: 4%{?dist}
 Summary: Jackson Java JSON-processor
 License: ASL 2.0 or LGPLv2
 URL:     http://jackson.codehaus.org
@@ -124,6 +124,9 @@ cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 %doc release-notes
 
 %changelog
+* Sat Jun 07 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.9.11-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
 * Thu Nov 14 2013 gil cattaneo <puntogil@libero.it> 1.9.11-3
 - switch to java-headless (build)requires (rhbz#1068160)
 
