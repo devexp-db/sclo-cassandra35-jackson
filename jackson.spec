@@ -111,10 +111,8 @@ done
 install -d -m 755 %{buildroot}%{_javadocdir}/%{name}
 cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 
-%files
-%{_mavenpomdir}/*
-%{_mavendepmapfragdir}/*
-%{_javadir}/%{name}
+%files -f .mfiles
+%dir %{_javadir}/%{name}
 %doc README.txt
 %doc release-notes
 
