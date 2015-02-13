@@ -1,6 +1,6 @@
 Name:    jackson
 Version: 1.9.11
-Release: 4%{?dist}
+Release: 5%{?dist}
 Summary: Jackson Java JSON-processor
 License: ASL 2.0 or LGPLv2
 URL:     http://jackson.codehaus.org
@@ -34,7 +34,7 @@ BuildRequires: stax2-api >= 3.1.1
 BuildRequires: jsr-311 >= 1.1.1
 BuildRequires: objectweb-asm3 >= 3.3
 BuildRequires: cglib >= 2.2
-BuildRequires: groovy >= 1.8.5
+BuildRequires: groovy18 >= 1.8.5
 
 %description
 JSON processor (JSON parser + JSON generator) written in Java. Beyond basic
@@ -72,7 +72,7 @@ ln -s $(build-classpath jsr-311) lib/jaxrs/jsr-311.jar
 ln -s $(build-classpath objectweb-asm3/asm) lib/ext/asm/asm.jar
 ln -s $(build-classpath objectweb-asm3/asm) lib/repackaged/jackson-asm.jar
 ln -s $(build-classpath cglib) lib/ext/cglib/cglib-nodep.jar
-ln -s $(build-classpath groovy) lib/ext/groovy/groovy.jar
+ln -s $(build-classpath groovy18-1.8) lib/ext/groovy/groovy.jar
 ln -s $(build-classpath junit) lib/junit/junit.jar
 
 sed -i "s,59 Temple Place,51 Franklin Street,;s,Suite 330,Fifth Floor,;s,02111-1307,02110-1301," \
@@ -80,7 +80,7 @@ sed -i "s,59 Temple Place,51 Franklin Street,;s,Suite 330,Fifth Floor,;s,02111-1
 
 native2ascii -encoding UTF8 src/test/org/codehaus/jackson/jaxrs/TestUntouchables.java \
  src/test/org/codehaus/jackson/jaxrs/TestUntouchables.java
- 
+
 %build
 
 ant dist
@@ -122,6 +122,9 @@ cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 %doc release-notes
 
 %changelog
+* Fri Feb 13 2015 gil cattaneo <puntogil@libero.it> 1.9.11-5
+- built with groovy18
+
 * Sat Jun 07 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.9.11-4
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
 
