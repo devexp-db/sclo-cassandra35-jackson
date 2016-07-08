@@ -1,6 +1,6 @@
 Name:    jackson
 Version: 1.9.11
-Release: 8%{?dist}
+Release: 9%{?dist}
 Summary: Jackson Java JSON-processor
 License: ASL 2.0 or LGPLv2
 URL:     http://jackson.codehaus.org
@@ -71,7 +71,7 @@ ln -s $(build-classpath stax2-api) lib/xml/sta2-api.jar
 ln -s $(build-classpath jsr-311) lib/jaxrs/jsr-311.jar
 ln -s $(build-classpath objectweb-asm3/asm) lib/ext/asm/asm.jar
 ln -s $(build-classpath objectweb-asm3/asm) lib/repackaged/jackson-asm.jar
-ln -s $(build-classpath cglib) lib/ext/cglib/cglib-nodep.jar
+ln -s $(build-classpath cglib/cglib) lib/ext/cglib/cglib-nodep.jar
 ln -s $(build-classpath groovy18-1.8) lib/ext/groovy/groovy.jar
 ln -s $(build-classpath junit) lib/junit/junit.jar
 
@@ -112,7 +112,6 @@ install -d -m 755 %{buildroot}%{_javadocdir}/%{name}
 cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 
 %files -f .mfiles
-%dir %{_javadir}/%{name}
 %doc README.txt
 %doc release-notes
 
@@ -122,6 +121,9 @@ cp -rp dist/javadoc/* %{buildroot}%{_javadocdir}/%{name}/.
 %doc release-notes
 
 %changelog
+* Fri Jul 08 2016 gil cattaneo <puntogil@libero.it> - 1.9.11-9
+- rebuilt with new cglib
+
 * Thu Feb 04 2016 Fedora Release Engineering <releng@fedoraproject.org> - 1.9.11-8
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
 
